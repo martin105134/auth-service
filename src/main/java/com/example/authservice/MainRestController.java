@@ -45,7 +45,7 @@ public class MainRestController {
         if (tokenService.validateToken(token)) {
             return ResponseEntity.ok("valid");
         } else {
-            return ResponseEntity.status(401).body("invalid");
+            return ResponseEntity.ok("invalid");
         }
     }
 
