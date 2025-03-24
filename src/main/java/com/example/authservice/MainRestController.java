@@ -19,17 +19,21 @@ public class MainRestController {
     @Autowired
     TokenRepo tokenRepository;
 
+    @Autowired
+    KafkaProducer kafkaProducer;
 
     @PostMapping("/signup")
-    public ResponseEntity<?> hello(@RequestBody AuthData authData) {
+    public ResponseEntity<?> hello(@RequestBody AuthData authData) throws JsonProcessingException {
         authDataRepo.save(authData);
+        kafkaProducer.sendMessage(authData.getUsername(),"REGISTER");
         return ResponseEntity.ok("User signed up successfully");
     }
 
     @GetMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AuthData authData) {
+    public ResponseEntity<?> login(@RequestBody AuthData authData) throws JsonProcessingException {
         AuthData existingAuthData = authDataRepo.findById(authData.getUsername()).orElse(null);
         if (existingAuthData != null && existingAuthData.getPassword().equals(authData.getPassword())) {
+            kafkaProducer.sendMessage(authData.getUsername(),"LOGIN");
             return ResponseEntity.ok().
                     header("Authorization", tokenService.generateToken(existingAuthData.getUsername()).getTokenid().toString()).
                     body("User logged in successfully");
@@ -39,10 +43,12 @@ public class MainRestController {
     }
 
     @GetMapping("/validate")
-    public ResponseEntity<?> validateToken(@RequestHeader("Authorization") String headerToken) {
+    public ResponseEntity<?> validateToken(@RequestHeader("Authorization") String headerToken) throws JsonProcessingException {
         String[] tokenArray = headerToken.split(" ");
         String token = tokenArray[1];
+        String username = tokenRepository.findById(Integer.valueOf(token)).get().getUsername();
         if (tokenService.validateToken(token)) {
+            kafkaProducer.sendMessage(username,"VALIDATE");
             return ResponseEntity.ok("valid");
         } else {
             return ResponseEntity.ok("invalid");
@@ -60,6 +66,7 @@ public class MainRestController {
         }
         tokenRepository.updateStatusByTokenid("invalid", Integer.valueOf(tokenArray[1]));
         String username = tokenRepository.findById(Integer.valueOf(tokenArray[1])).get().getUsername();
+        kafkaProducer.sendMessage(username,"LOGOUT");
         return ResponseEntity.ok("logged out successfully");
     }
 }
