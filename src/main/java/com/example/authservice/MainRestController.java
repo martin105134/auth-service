@@ -46,8 +46,8 @@ public class MainRestController {
     public ResponseEntity<?> validateToken(@RequestHeader("Authorization") String headerToken) throws JsonProcessingException {
         String[] tokenArray = headerToken.split(" ");
         String token = tokenArray[1];
-        String username = tokenRepository.findById(Integer.valueOf(token)).get().getUsername();
         if (tokenService.validateToken(token)) {
+            String username = tokenRepository.findById(Integer.valueOf(token)).get().getUsername();
             kafkaProducer.sendMessage(username,"VALIDATE");
             return ResponseEntity.ok("valid");
         } else {
